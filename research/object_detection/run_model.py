@@ -154,14 +154,18 @@ def main():
   image_paths = get_images_in_dir(args.dir)
 
   for i, image_path in enumerate(image_paths):
-    images_objects = run_graph_on_images([image_path], detection_graph, category_index, args.min_score, args.box_output_dir)
     file_name = os.path.basename(image_path)
-    with open(os.path.join(args.json_output_dir, file_name + '.json'), 'w') as json_file:
-      json_file.write(json.dumps(images_objects, indent=2))
-    print('{}: Done {}'.format(i, image_path))
+    json_path = os.path.join(args.json_output_dir, file_name + '.json')
 
-  for image_path, objects in images_objects.items():
-    crop_image_to_boxes(image_path, objects, args.cropped_output_dir)
+    if os.path.isfile(json_path):
+      print('{}: Skipped {}'.format(i, image_path))
+    else:
+      images_objects = run_graph_on_images([image_path], detection_graph, category_index, args.min_score, args.box_output_dir)
+      for image_path, objects in images_objects.items():
+        crop_image_to_boxes(image_path, objects, args.cropped_output_dir)
+      with open(json_path, 'w') as json_file:
+        json_file.write(json.dumps(images_objects, indent=2))
+      print('{}: Done {}'.format(i, image_path))
 
 if __name__ == '__main__':
   main()
