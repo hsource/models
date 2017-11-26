@@ -2,6 +2,7 @@
 # python models/research/object_detection/run_model.py  --model runs\1\model\frozen_inference_graph.pb --labels runs\1\data\costco_label_map.pbtxt --box-output temp\boxes --output temp\output temp\input
 
 import argparse
+from datetime import datetime
 import json
 import os
 import re
@@ -47,7 +48,7 @@ def pil_box_from_np_box(np_box, im_width, im_height):
   # For reference, box = (left, upper, right, lower)
   return (xmin * im_width, ymin * im_height, xmax * im_width, ymax * im_height)
 
-def run_graph_on_images(image_paths, detection_graph, category_index, min_score, image_dir=None):
+def run_graph_on_images(image_paths, detection_graph, category_index, min_score, json_output_dir, image_dir=None):
   with detection_graph.as_default():
     with tf.Session(graph=detection_graph) as sess:
       # Definite input and output Tensors for detection_graph
@@ -60,9 +61,15 @@ def run_graph_on_images(image_paths, detection_graph, category_index, min_score,
       detection_classes = detection_graph.get_tensor_by_name('detection_classes:0')
       num_detections = detection_graph.get_tensor_by_name('num_detections:0')
 
-      images_objects = {}
+      for image_num, image_path in enumerate(image_paths):
+        file_name = os.path.basename(image_path)
+        json_path = os.path.join(json_output_dir, file_name + '.json')
 
-      for image_path in image_paths:
+        # Skip if we already have a JSON output file
+        if os.path.isfile(json_path):
+          print('{}: Skipped {} at {}'.format(image_num, image_path, datetime.now()))
+          continue
+
         image = Image.open(image_path)
         # the array based representation of the image will be used later in order to prepare the
         # result image with boxes and labels on it.
@@ -86,10 +93,9 @@ def run_graph_on_images(image_paths, detection_graph, category_index, min_score,
               use_normalized_coordinates=True,
               line_thickness=8)
           writeable_image = Image.fromarray(image_np, 'RGB')
-          file_name = os.path.basename(image_path)
           writeable_image.save(os.path.join(image_dir, file_name + '.jpg'))
 
-        # Get the objects into a encodable file
+        # Get the objects into a encodable JSON file
         image_objects = []
         (im_width, im_height) = image.size
         for i, score in enumerate(scores[0]):
@@ -98,9 +104,12 @@ def run_graph_on_images(image_paths, detection_graph, category_index, min_score,
             np_box = [np.asscalar(coord) for coord in boxes[0][i]]
             pil_box = pil_box_from_np_box(np_box, im_width, im_height)
             image_objects.append({'score': native_score, 'box': pil_box})
-        images_objects[image_path] = image_objects
 
-      return images_objects
+        with open(json_path, 'w') as json_file:
+          json_file.write(json.dumps(image_objects, indent=2))
+
+        print('{}: Done {} at {}'.format(image_num, image_path, datetime.now()))
+
 
 def get_images_in_dir(image_dir):
   files = os.listdir(image_dir)
@@ -153,19 +162,7 @@ def main():
   category_index = load_label_map_category_index(args.labels_file)
   image_paths = get_images_in_dir(args.dir)
 
-  for i, image_path in enumerate(image_paths):
-    file_name = os.path.basename(image_path)
-    json_path = os.path.join(args.json_output_dir, file_name + '.json')
-
-    if os.path.isfile(json_path):
-      print('{}: Skipped {}'.format(i, image_path))
-    else:
-      images_objects = run_graph_on_images([image_path], detection_graph, category_index, args.min_score, args.box_output_dir)
-      for image_path, objects in images_objects.items():
-        crop_image_to_boxes(image_path, objects, args.cropped_output_dir)
-      with open(json_path, 'w') as json_file:
-        json_file.write(json.dumps(images_objects, indent=2))
-      print('{}: Done {}'.format(i, image_path))
+  run_graph_on_images(image_paths, detection_graph, category_index, args.min_score, args.json_output_dir, args.box_output_dir)
 
 if __name__ == '__main__':
   main()
