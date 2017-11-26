@@ -142,6 +142,7 @@ def main():
   parser.add_argument('--model', dest='model_file', required=True, help='Usually a frozen_inference_graph.pb')
   parser.add_argument('--labels', dest='labels_file', required=True, help='A label-map pbtxt')
   parser.add_argument('--output', dest='cropped_output_dir', required=True, help='Where to output cropped images')
+  parser.add_argument('--json-output', dest='json_output_dir', required=True, help='Directory to put JSON outputs for each image')
   parser.add_argument('--box-output', dest='box_output_dir', default=None, help='Directory to put files with outline boxes')
   parser.add_argument('--min-score', dest='min_score', type=float, default=0.1, help='Default 0.1, Minimum score to record boxes over')
   parser.add_argument('dir', help='Directory with images')
@@ -152,8 +153,13 @@ def main():
   category_index = load_label_map_category_index(args.labels_file)
   image_paths = get_images_in_dir(args.dir)
 
-  images_objects = run_graph_on_images(image_paths, detection_graph, category_index, args.min_score, args.box_output_dir)
-  print(json.dumps(images_objects))
+  for i, image_path in enumerate(image_paths):
+    images_objects = run_graph_on_images([image_path], detection_graph, category_index, args.min_score, args.box_output_dir)
+    file_name = os.path.basename(image_path)
+    with open(os.path.join(args.json_output_dir, file_name + '.json'), 'w') as json_file:
+      json_file.write(json.dumps(images_objects, indent=2))
+    print('{}: Done {}'.format(i, image_path))
+
   for image_path, objects in images_objects.items():
     crop_image_to_boxes(image_path, objects, args.cropped_output_dir)
 
