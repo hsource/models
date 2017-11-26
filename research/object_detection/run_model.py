@@ -128,12 +128,12 @@ def crop_image_to_boxes(image_path, identified_objects, cropped_output_dir, buff
     top = top - extra_height_per_side
     bottom = bottom + extra_height_per_side
     box = [
-        clamp(left, 0, im_width),
-        clamp(top, 0, im_height),
-        clamp(right, 0, im_width),
-        clamp(bottom, 0, im_height)
+        clamp(left, 0, im_width - 1),
+        clamp(top, 0, im_height - 1),
+        clamp(right, 0, im_width - 1),
+        clamp(bottom, 0, im_height - 1)
     ]
-    box = [round(coord) for coord in box]
+    box = [int(round(coord)) for coord in box]
     new_image = image.crop(box)
     new_image.save(os.path.join(cropped_output_dir, '{}.{}.jpg'.format(file_name, i)))
 
