@@ -93,7 +93,7 @@ def run_graph_on_images(image_paths, detection_graph, category_index, min_score,
         image_objects = []
         (im_width, im_height) = image.size
         for i, score in enumerate(scores[0]):
-          if score > min_score:
+          if score >= min_score:
             native_score = np.asscalar(score)
             np_box = [np.asscalar(coord) for coord in boxes[0][i]]
             pil_box = pil_box_from_np_box(np_box, im_width, im_height)
@@ -143,7 +143,7 @@ def main():
   parser.add_argument('--labels', dest='labels_file', required=True, help='A label-map pbtxt')
   parser.add_argument('--output', dest='cropped_output_dir', required=True, help='Where to output cropped images')
   parser.add_argument('--box-output', dest='box_output_dir', default=None, help='Directory to put files with outline boxes')
-  parser.add_argument('--min-score', dest='min_score', type=float, default=0.5, help='Default 0.5, Minimum score to record boxes over')
+  parser.add_argument('--min-score', dest='min_score', type=float, default=0.1, help='Default 0.1, Minimum score to record boxes over')
   parser.add_argument('dir', help='Directory with images')
 
   args = parser.parse_args()
