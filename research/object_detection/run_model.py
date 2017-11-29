@@ -146,6 +146,23 @@ def crop_image_to_boxes(image_path, identified_objects, cropped_output_dir, buff
     new_image = image.crop(box)
     new_image.save(os.path.join(cropped_output_dir, '{}.{}.jpg'.format(file_name, i)))
 
+def crop_images_to_boxes(image_paths, json_dir, cropped_output_dir, crop_threshold=0.96):
+  for (image_num, image_path) in enumerate(image_paths):
+    file_name = os.path.basename(image_path)
+    json_path = os.path.join(json_dir, file_name + '.json')
+    if not os.path.exists(json_path):
+      print('{}: Skipped cropping {} at {}'.format(image_num, image_path, datetime.now()))
+      continue
+
+    with open(json_path, 'r') as json_file:
+      identified_objects = json.loads(json_file.read())
+
+    scores = [obj['score'] for obj in identified_objects]
+    print(scores)
+    identified_objects = [obj for obj in identified_objects if obj['score'] > crop_threshold]
+    crop_image_to_boxes(image_path, identified_objects, cropped_output_dir)
+    print('{}: Cropped {} at {}'.format(image_num, image_path, datetime.now()))
+
 def main():
   parser = argparse.ArgumentParser(description='Runs a tensorflow model against a directory of images')
   parser.add_argument('--model', dest='model_file', required=True, help='Usually a frozen_inference_graph.pb')
@@ -154,15 +171,19 @@ def main():
   parser.add_argument('--json-output', dest='json_output_dir', required=True, help='Directory to put JSON outputs for each image')
   parser.add_argument('--box-output', dest='box_output_dir', default=None, help='Directory to put files with outline boxes')
   parser.add_argument('--min-score', dest='min_score', type=float, default=0.1, help='Default 0.1, Minimum score to record boxes over')
+  parser.add_argument('--crop-only', dest='crop_only', action='store_true', help='Whether to only crop without running training')
   parser.add_argument('dir', help='Directory with images')
 
   args = parser.parse_args()
 
-  detection_graph = load_graph(args.model_file)
-  category_index = load_label_map_category_index(args.labels_file)
   image_paths = get_images_in_dir(args.dir)
 
-  run_graph_on_images(image_paths, detection_graph, category_index, args.min_score, args.json_output_dir, args.box_output_dir)
+  if not args.crop_only:
+    detection_graph = load_graph(args.model_file)
+    category_index = load_label_map_category_index(args.labels_file)
+    run_graph_on_images(image_paths, detection_graph, category_index, args.min_score, args.json_output_dir, args.box_output_dir)
+
+  crop_images_to_boxes(image_paths, args.json_output_dir, args.cropped_output_dir)
 
 if __name__ == '__main__':
   main()
