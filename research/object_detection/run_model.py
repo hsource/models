@@ -124,7 +124,7 @@ def crop_image_to_boxes(image_path, identified_objects, cropped_output_dir, buff
   image = Image.open(image_path)
   (im_width, im_height) = image.size
 
-  for i, object_info in enumerate(identified_objects):
+  for object_info in identified_objects:
     (left, top, right, bottom) = object_info['box']
 
     # Add a bit to width/height depending on buffer ratio
@@ -144,7 +144,8 @@ def crop_image_to_boxes(image_path, identified_objects, cropped_output_dir, buff
     ]
     box = [int(round(coord)) for coord in box]
     new_image = image.crop(box)
-    new_image.save(os.path.join(cropped_output_dir, '{}.{}.jpg'.format(file_name, i)))
+    suffix = '{}-{}-{}-{}'.format(left, right, top, bottom)
+    new_image.save(os.path.join(cropped_output_dir, '{}.{}.jpg'.format(file_name, suffix)))
 
 def crop_images_to_boxes(image_paths, json_dir, cropped_output_dir, crop_threshold=0.96):
   for (image_num, image_path) in enumerate(image_paths):
